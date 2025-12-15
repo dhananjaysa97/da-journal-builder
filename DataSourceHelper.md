@@ -1,4 +1,3 @@
-
 # DataSourceHelper.md
 
 ## Purpose
@@ -41,6 +40,7 @@ export type GraphForm = {
 ```
 
 This contract is used by:
+
 - dependency traversal (`resolveDependsOnToRoot`)
 - mapping logic (compatibility helpers)
 - all UI components (`FormView`, `FieldMapModal`, etc.)
@@ -97,6 +97,7 @@ export function normalizeNewGraphSource(raw: unknown): GraphForm[] {
 ```
 
 **Normalization rules:**
+
 - Do not leak raw API fields past normalization
 - Convert identifiers and names into the stable model
 - Ensure all `dependsOn` values reference form IDs
@@ -148,7 +149,9 @@ When building the list of selectable dependency fields:
 
 ```ts
 const sortedDependencyForms = useMemo(() => {
-  const sorted = [...dependencyForms].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = [...dependencyForms].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   return [GLOBAL_FORM, ...sorted];
 }, [dependencyForms]);
 ```
@@ -164,6 +167,7 @@ Compatibility is determined by pure helper logic:
 If new sources introduce new naming conventions, update the categorization rules here.
 
 Example approach:
+
 ```ts
 export function fieldCategory(fld: { name: string }) {
   const n = fld.name.toLowerCase();
@@ -195,7 +199,7 @@ Rules should be consistent and tested. UI components should only call the helper
 
 Do not fetch external data inside client components  
 Do not store raw API objects in React state  
-Do not add “if source is X then …” logic inside components  
+Do not add “if source is X then …” logic inside components
 
 ---
 
@@ -203,11 +207,10 @@ Do not add “if source is X then …” logic inside components
 
 When we introduce a new data source:
 
-1. Add unit tests for the normalization function  
-2. Ensure compatibility tests still pass  
-3. Run component tests to confirm UI is unaffected  
+1. Add unit tests for the normalization function
+2. Ensure compatibility tests still pass
+3. Run component tests to confirm UI is unaffected
 4. Verify mapping and modal behavior works with the new forms
-
 
 ---
 

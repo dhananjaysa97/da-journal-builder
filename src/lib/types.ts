@@ -4,7 +4,7 @@ export type GraphField = {
 };
 
 export type GraphForm = {
-  id: string; // node id 
+  id: string; // node id
   name: string; // display name
   label?: string;
   dependsOn: string[]; // node ids this form depends on

@@ -6,16 +6,18 @@ This document highlights the key patterns in this project that are worth paying 
 
 ## 1) Normalize First, UI Second
 
-**Pattern:** Convert any external data into a stable internal model *before* it reaches React components.
+**Pattern:** Convert any external data into a stable internal model _before_ it reaches React components.
 
 - External APIs can change. UI should not.
 - Keep “messy” API shape knowledge in one place (normalization), not spread across components.
 
 **Where to look**
+
 - Server fetch / SSR entry (`src/app/page.tsx` or server helpers)
 - Normalization helpers (e.g., `src/lib/dataHelper.ts`)
 
 **Rule of thumb**
+
 > Components should consume `GraphForm[]` (the contract), not raw API responses.
 
 ---
@@ -27,7 +29,6 @@ This document highlights the key patterns in this project that are worth paying 
 - `GraphForm` defines: `id`, `name`, `fields[{id,name}]`, `dependsOn[]`
 - Mapping, dependency traversal, and UI rendering all rely on it
 
-
 ---
 
 ## 3) Pure Logic in `src/lib/*`, Rendering in `src/components/*`
@@ -35,6 +36,7 @@ This document highlights the key patterns in this project that are worth paying 
 **Pattern:** Keep decision logic out of React components.
 
 Examples of logic that belongs in `src/lib`:
+
 - dependency traversal
 - compatibility rules (field categorization)
 - mapping label formatting
@@ -42,17 +44,19 @@ Examples of logic that belongs in `src/lib`:
 - option building / sorting
 
 Examples of logic that belongs in components:
+
 - rendering
 - event handling (clicks, keyboard)
 - local UI state (modal open/close, selected option)
 
 **Why it matters**
+
 - Pure functions are easier to test
 - Components stay readable and focused
 
 ---
 
-## 4) Derived Data via `useMemo` 
+## 4) Derived Data via `useMemo`
 
 **Pattern:** Use `useMemo` for derived structures (maps, sorted lists), and avoid mutating props.
 
@@ -67,6 +71,7 @@ Examples of logic that belongs in components:
 - Submit applies the draft; cancel discards
 
 **Why it matters**
+
 - Predictable user experience
 - Easier to reason about state changes
 - Less chance of partially-applied updates
@@ -81,6 +86,7 @@ Browsers can visually highlight options even when controlled `value=""`.
 If we rely on selection state for enabling actions (“Add”, “Remove”), default-select the first real option in state when options appear.
 
 **Why it matters**
+
 - Keeps keyboard and mouse interaction consistent
 
 ---
@@ -93,6 +99,7 @@ If we rely on selection state for enabling actions (“Add”, “Remove”), de
 - Label formatting: `src/lib/mapping/mappingLabels.ts`
 
 **Why it matters**
+
 - Adding new field categories becomes a single change + tests
 - UI remains stable while rules evolve
 
@@ -103,6 +110,7 @@ If we rely on selection state for enabling actions (“Add”, “Remove”), de
 **Pattern:** Keep more tests around pure helpers than around DOM structure.
 
 Good test targets:
+
 - normalization output (`normalizeGraphResponse`)
 - dependency traversal (`resolveDependsOnToRoot`)
 - compatibility rules
@@ -121,6 +129,7 @@ Good test targets:
 - keep `aria-label` for icon-only buttons
 
 **Why it matters**
+
 - Better UX and inclusive design
 - Makes the UI more “production ready”
 - Helps in code reviews
@@ -131,10 +140,11 @@ Good test targets:
 
 **Pattern:** Use config for things like excluded field keys.
 
-- `mappingConfig.excludedFieldKeys` 
+- `mappingConfig.excludedFieldKeys`
 - Keep the config simple and declarative
 
 **Why it matters**
+
 - Avoid sprinkling “special field” rules across multiple files
 - Makes behavior changes safer and easier to review
 
@@ -157,6 +167,7 @@ Before shipping a new feature, check:
 ## Summary
 
 If I preserve these patterns, the project stays:
+
 - extensible (new sources plug in easily),
 - testable (rules are isolated),
 - readable (components stay small),

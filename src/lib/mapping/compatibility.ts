@@ -1,4 +1,5 @@
 import type { GraphField } from "@/lib/types";
+import { mappingConfig } from "../../config/mappingConfig";
 
 export function fieldCategory(fld: Pick<GraphField, "name">): string {
   const n = (fld.name ?? "").toLowerCase();
@@ -15,5 +16,9 @@ export function isCompatible(
   targetField: Pick<GraphField, "name">,
   sourceField: Pick<GraphField, "name">,
 ): boolean {
+  if (mappingConfig.allowAllFields) {
+    return true;
+  }
+
   return fieldCategory(targetField) === fieldCategory(sourceField);
 }

@@ -14,7 +14,7 @@ type Option = {
   group: string; // Form name
 };
 
-type DraftForForm = Record<string, FieldMapping[]>; 
+type DraftForForm = Record<string, FieldMapping[]>;
 
 function makeRightKey(targetFieldKey: string, m: FieldMapping) {
   return `${targetFieldKey}::${m.sourceFormId}::${m.sourceFieldKey}`;
@@ -29,14 +29,20 @@ export function FieldMapModal(props: {
   open: boolean;
   onClose: () => void;
   targetForm: GraphForm;
-
+  targetFieldKey: string | null;
   dependencyForms: GraphForm[];
-
   initial?: DraftForForm | null;
   onSubmit: (draft: DraftForForm) => void;
 }) {
-  const { open, onClose, targetForm, dependencyForms, initial, onSubmit } =
-    props;
+  const {
+    open,
+    onClose,
+    targetForm,
+    targetFieldKey,
+    dependencyForms,
+    initial,
+    onSubmit,
+  } = props;
 
   const excluded = useMemo(
     () =>
@@ -55,10 +61,11 @@ export function FieldMapModal(props: {
   );
 
   const sortedDependencyForms = useMemo(() => {
-  const sorted = [...dependencyForms].sort((a, b) => a.name.localeCompare(b.name));
-  return [GLOBAL_FORM, ...sorted];
-}, [dependencyForms]);
-
+    const sorted = [...dependencyForms].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    return [GLOBAL_FORM, ...sorted];
+  }, [dependencyForms]);
 
   // All available source options (filtered by excluded keys)
   const allOptions: Option[] = useMemo(() => {
@@ -108,11 +115,12 @@ export function FieldMapModal(props: {
 
   useEffect(() => {
     if (!open) return;
+    if (mappingConfig.allowAllFields && !targetFieldKey) return;
     setDraft(initial ? safeClone(initial) : {});
     setLeftSelectedKey(allOptions[0]?.key ?? "");
     setRightSelectedKey("");
     setWarn("");
-  }, [open, initial, allOptions]);
+  }, [open, targetFieldKey, initial, allOptions]);
 
   function pickTargetFieldForSource(sourceField: {
     name: string;
@@ -121,7 +129,6 @@ export function FieldMapModal(props: {
   }) {
     // 1) Prefer exact key match
     const exact = targetFields.find((t) => t.name === sourceField.name);
-
     if (exact) return exact;
 
     // 2) Otherwise pick first compatible by category
@@ -138,30 +145,33 @@ export function FieldMapModal(props: {
     const sourceField = sourceForm?.fields.find(
       (f) => f.name === sourceFieldKey,
     );
-
     if (!sourceForm || !sourceField) return;
 
-    // pick best target field
-    const targetField = pickTargetFieldForSource(sourceField);
-
-    if (!targetField) {
-      setWarn(
-        `No compatible target field found for ${sourceForm.name}.${sourceFieldKey}`,
-      );
-      return;
-    }
-
-    if (!isCompatible(targetField, sourceField)) {
-      setWarn(
-        `Type mismatch: cannot map ${sourceForm.name}.${sourceFieldKey} → ${targetForm.name}.${targetField.name}`,
-      );
-      return;
+    let targetField = null as (typeof targetFields)[number] | null;
+    if (mappingConfig.allowAllFields) {
+      targetField = targetFields.find((t) => t.name === targetFieldKey) ?? null;
+      if (!targetField) return;
+    } else {
+      targetField = pickTargetFieldForSource(sourceField);
+      if (!targetField) {
+        setWarn(
+          `No compatible target field found for ${sourceForm.name}.${sourceFieldKey}`,
+        );
+        return;
+      }
+      if (!isCompatible(targetField, sourceField)) {
+        setWarn(
+          `Type mismatch: cannot map ${sourceForm.name}.${sourceFieldKey} → ${targetForm.name}.${targetField.name}`,
+        );
+        return;
+      }
     }
 
     // add mapping under chosen target field
     setDraft((prev) => {
       const next: DraftForForm = { ...prev };
-      const list = [...(next[targetField.name] ?? [])];
+      const key = targetField!.name;
+      const list = [...(next[key] ?? [])];
 
       const exists = list.some(
         (m) =>
@@ -170,7 +180,7 @@ export function FieldMapModal(props: {
       );
       if (!exists) list.push({ sourceFormId, sourceFieldKey });
 
-      next[targetField.name] = list;
+      next[key] = list;
       return next;
     });
 
@@ -205,15 +215,22 @@ export function FieldMapModal(props: {
   }
 
   const rightOptions = useMemo(() => {
-    // flatten draft into readable rows: Target • SourceForm.SourceField
     const out: { key: string; group: string; label: string }[] = [];
-    for (const [targetFieldKey, list] of Object.entries(draft)) {
+
+    // In allowAllFields mode, show ONLY mappings for the selected target field
+    const entries =
+      mappingConfig.allowAllFields && targetFieldKey
+        ? ([[targetFieldKey, draft[targetFieldKey] ?? []]] as const)
+        : (Object.entries(draft) as [string, FieldMapping[]][]);
+
+    for (const [tKey, list] of entries) {
       for (const m of list) {
         const sf = formsById[m.sourceFormId];
         out.push({
-          key: makeRightKey(targetFieldKey, m),
-          group: `${targetFieldKey}`,
-          label: `${sf?.name ?? m.sourceFieldKey}`,
+          key: makeRightKey(tKey, m),
+          group: tKey,
+          // Optional: include the field name too (recommended)
+          label: `${sf?.name ?? m.sourceFormId}.${m.sourceFieldKey}`,
         });
       }
     }
@@ -222,28 +239,28 @@ export function FieldMapModal(props: {
       (a, b) =>
         a.group.localeCompare(b.group) || a.label.localeCompare(b.label),
     );
-  }, [draft, formsById]);
+  }, [draft, formsById, targetFieldKey]);
 
   useEffect(() => {
-  if (!open) return;
+    if (!open) return;
 
-  // If mappings exist but nothing is selected in state, select the first entry
-  if (!rightSelectedKey && rightOptions.length > 0) {
-    setRightSelectedKey(rightOptions[0].key);
-    return;
-  }
+    // If mappings exist but nothing is selected in state, select the first entry
+    if (!rightSelectedKey && rightOptions.length > 0) {
+      setRightSelectedKey(rightOptions[0].key);
+      return;
+    }
 
-  // If the currently selected key no longer exists (removed), pick the first remaining
-  if (rightSelectedKey && rightOptions.length > 0) {
-    const exists = rightOptions.some((o) => o.key === rightSelectedKey);
-    if (!exists) setRightSelectedKey(rightOptions[0].key);
-  }
+    // If the currently selected key no longer exists (removed), pick the first remaining
+    if (rightSelectedKey && rightOptions.length > 0) {
+      const exists = rightOptions.some((o) => o.key === rightSelectedKey);
+      if (!exists) setRightSelectedKey(rightOptions[0].key);
+    }
 
-  // If list becomes empty, clear selection
-  if (rightOptions.length === 0 && rightSelectedKey) {
-    setRightSelectedKey("");
-  }
-}, [open, rightOptions, rightSelectedKey]);
+    // If list becomes empty, clear selection
+    if (rightOptions.length === 0 && rightSelectedKey) {
+      setRightSelectedKey("");
+    }
+  }, [open, rightOptions, rightSelectedKey]);
 
   const canSubmit = Object.keys(draft).length > 0;
 
@@ -264,13 +281,22 @@ export function FieldMapModal(props: {
       >
         <div className="p-4 border-b border-slate-200 flex items-start justify-between">
           <div>
-            <div className="text-sm text-slate-500">Map fields</div>
             <div className="text-lg font-semibold">{targetForm.name}</div>
 
             <div className="mt-1 text-sm text-slate-600">
-              Double-click a dependency field to{" "}
-              <span className="font-medium">map it</span> to a compatible target
-              field.
+              {mappingConfig.allowAllFields ? (
+                <>
+                  Double-click a dependency field to{" "}
+                  <span className="font-medium">map it to </span>
+                  {targetFieldKey}
+                </>
+              ) : (
+                <>
+                  Double-click a dependency field to{" "}
+                  <span className="font-medium">map it</span> to a compatible
+                  target field.
+                </>
+              )}
             </div>
 
             {warn ? (

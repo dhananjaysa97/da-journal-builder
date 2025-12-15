@@ -1,4 +1,5 @@
 import { fieldCategory, isCompatible } from "@/lib/mapping/compatibility";
+import { mappingConfig } from "../../../config/mappingConfig";
 
 describe("mapping/compatibility", () => {
   describe("fieldCategory", () => {
@@ -75,5 +76,21 @@ describe("mapping/compatibility", () => {
       expect(isCompatible({ name: "" }, { name: "firstName" })).toBe(true);
       expect(isCompatible({ name: "" }, { name: "email" })).toBe(false);
     });
+  });
+});
+
+describe("isCompatible with allowAllFields", () => {
+  afterEach(() => {
+    mappingConfig.allowAllFields = false;
+  });
+
+  test("restricts mapping when allowAllFields=false", () => {
+    mappingConfig.allowAllFields = false;
+    expect(isCompatible({ name: "email" }, { name: "phone" })).toBe(false);
+  });
+
+  test("allows any mapping when allowAllFields=true", () => {
+    mappingConfig.allowAllFields = true;
+    expect(isCompatible({ name: "email" }, { name: "phone" })).toBe(true);
   });
 });

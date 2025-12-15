@@ -25,6 +25,9 @@ export function FormView(props: {
   const { form, forms, mappings, onRemoveMapping, onSetFormMappings } = props;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTargetFieldKey, setActiveTargetFieldKey] = useState<
+    string | null
+  >(null);
   const [prefillEnabled, setPrefillEnabled] = useState(true);
 
   const formsById = useMemo(
@@ -110,6 +113,7 @@ export function FormView(props: {
                     if (isExcludedField) return;
                     if (!prefillEnabled) return;
                     if (mList.length > 0) return;
+                    setActiveTargetFieldKey(fld.name);
                     setIsModalOpen(true);
                   }}
                   onKeyDown={(e) => {
@@ -118,6 +122,7 @@ export function FormView(props: {
                       if (isExcludedField) return;
                       if (!prefillEnabled) return;
                       if (mList.length > 0) return;
+                      setActiveTargetFieldKey(fld.name);
                       setIsModalOpen(true);
                     }
                   }}
@@ -182,8 +187,12 @@ export function FormView(props: {
 
       <FieldMapModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setActiveTargetFieldKey(null);
+        }}
         targetForm={form}
+        targetFieldKey={activeTargetFieldKey}
         dependencyForms={dependsOnForms}
         initial={mappings[form.id] ?? null}
         onSubmit={(draftForForm) => {
